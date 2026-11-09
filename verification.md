@@ -33,3 +33,15 @@ Este documento registra la validación del resumen entregado por el coding agent
 
 - **Afirmación Incorrecta (Origen de datos):** Inicialmente se podría asumir una base de datos por tratarse de un dashboard financiero enterprise, pero la evidencia en `backend/app/routes.py` demuestra que utiliza un generador procedural (`generate_mock_movements`) de 360 registros. La semilla `42` fija la secuencia aleatoria; el año de los registros cambia con la fecha actual.
 - **Diferencia de Idiomas:** Aunque existe un archivo de documentación en español (`README.es.md`), la interfaz de usuario y los componentes visuales (`dashboard-header.tsx`, `kpi-row.tsx`) están implementados completamente en inglés.
+
+# Fase 1: Rastro de Verificación de la API
+
+## Endpoints Verificados (contra backend/app/routes.py y modelos Pydantic)
+- **Filtro de fechas y facetas:** `GET /api/metrics/facets` (retorna `min_date`, `max_date`, `categories`, `business_types`, `operation_types`).
+- **Filtrado de movimientos:** `GET /api/metrics` (soporta `start_date`, `end_date`, `category`, `operation_type`).
+- **Tabla de anomalías:** `GET /api/metrics/alerts` (soporta `threshold`, `group_by`, `start_date`, `end_date`, `business_type`). Devuelve `period`, `outcome_total`, `baseline_average`, `increase_ratio`.
+- **Vista comparativa B2B vs B2C:** `GET /api/metrics/categories/top` (soporta `operation_type`, `limit`, `business_type`, `start_date`, `end_date`).
+
+## Resolución de Desajustes (Wording del PM vs. API Real)
+1. **Porcentaje de incremento de anomalías:** El PM solicita un porcentaje, pero la API expone `increase_ratio` (razón decimal, ej. `0.3`). *Resolución en spec:* Se documentará la regla de presentación de multiplicar por 100 en el frontend, manteniendo el contrato intacto.
+2. **Comparativa B2B vs B2C:** El endpoint `/facets` solo lista los tipos de negocio disponibles y no métricas separadas. *Resolución en spec:* Se especificará que el cliente debe invocar dos veces `/categories/top` (una con `business_type=B2B` y otra con `business_type=B2C`).
