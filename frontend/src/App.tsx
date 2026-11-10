@@ -7,40 +7,59 @@ import {
   type FinancialMovement,
   type KPIMetrics,
   type MonthlyDataPoint,
+  isFinancialMovement,
 } from "@/lib/financial-types";
-import { computeKPIs, computeMonthlyData } from "@/lib/financial-utils";
+import {
+  computeKPIs,
+  computeMonthlyData,
+  formatMovementPeriod,
+} from "@/lib/financial-utils";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-async function fetchFinancialData(): Promise<FinancialMovement[]> {
-  const response = await fetch(`${API_BASE_URL}/api/metrics`);
+async function fetchFinancialData(signal: AbortSignal): Promise<FinancialMovement[]> {
+  const response = await fetch(`${API_BASE_URL}/api/metrics`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch financial data: ${response.status}`);
   }
-  return response.json();
+  const data: unknown = await response.json();
+  if (!Array.isArray(data) || !data.every(isFinancialMovement)) {
+    throw new Error("Invalid financial metrics response");
+  }
+  return data as FinancialMovement[];
 }
 
 function App() {
-  const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
-  const [monthlyData, setMonthlyData] = useState<MonthlyDataPoint[]>([]);
+  const [movements, setMovements] = useState<FinancialMovement[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFinancialData()
-      .then((movements) => {
-        setMetrics(computeKPIs(movements));
-        setMonthlyData(computeMonthlyData(movements));
-      })
-      .catch(() => {
-        setError(
-          "No se pudo cargar la informacion financiera. Revisa la API de backend.",
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    const controller = new AbortController();
+
+    async function loadFinancialData() {
+      try {
+        const data = await fetchFinancialData(controller.signal);
+        if (!controller.signal.aborted) setMovements(data);
+      } catch {
+        if (!controller.signal.aborted) {
+          setError(
+            "Financial data could not be loaded. Check the backend API and try again.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadFinancialData();
+    return () => controller.abort();
   }, []);
+
+  const metrics: KPIMetrics | null = movements ? computeKPIs(movements) : null;
+  const monthlyData: MonthlyDataPoint[] = movements
+    ? computeMonthlyData(movements)
+    : [];
 
   return (
     <>
@@ -50,7 +69,17 @@ function App() {
       <main className="dark min-h-screen bg-background text-foreground">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8">
-            <DashboardHeader period="2024 - Full Year" />
+            <DashboardHeader
+              period={movements ? formatMovementPeriod(movements) : "—"}
+            />
+
+            <p className="sr-only" role="status" aria-live="polite">
+              {loading
+                ? "Loading financial dashboard"
+                : error
+                  ? "Financial dashboard could not be loaded"
+                  : "Financial dashboard data loaded"}
+            </p>
 
             <div id="dashboard-content" tabIndex={-1} className="flex flex-col gap-8">
               {error ? (

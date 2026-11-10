@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   computeKPIs,
   computeMonthlyData,
+  formatMovementPeriod,
   formatCurrency,
   formatPercent,
 } from "./financial-utils";
-import type { FinancialMovement } from "./financial-types";
+import { isFinancialMovement, type FinancialMovement } from "./financial-types";
 
 const sampleMovements: FinancialMovement[] = [
   {
@@ -100,6 +101,44 @@ describe("computeMonthlyData", () => {
       outcome: 0,
       profitPercent: 100,
     });
+  });
+
+  it("keeps ISO dates in their calendar month regardless of local timezone", () => {
+    const movement: FinancialMovement = {
+      create_date: "2024-01-01",
+      amount: 50,
+      operation_type: "income",
+      category: "sales",
+      business_type: "B2C",
+    };
+
+    expect(computeMonthlyData([movement])[0].month).toBe("Jan 2024");
+  });
+});
+
+describe("formatMovementPeriod", () => {
+  it("shows the actual inclusive month range", () => {
+    expect(formatMovementPeriod(sampleMovements)).toBe("Jan 2024 – Feb 2024");
+  });
+
+  it("handles empty and single-month results", () => {
+    expect(formatMovementPeriod([])).toBe("No data");
+    expect(formatMovementPeriod(sampleMovements.slice(0, 2))).toBe("Jan 2024");
+  });
+});
+
+describe("isFinancialMovement", () => {
+  it("accepts valid API movements and rejects malformed data", () => {
+    expect(isFinancialMovement(sampleMovements[0])).toBe(true);
+    expect(isFinancialMovement({ ...sampleMovements[0], amount: Infinity })).toBe(
+      false,
+    );
+    expect(
+      isFinancialMovement({ ...sampleMovements[0], create_date: "2024-02-30" }),
+    ).toBe(false);
+    expect(
+      isFinancialMovement({ ...sampleMovements[0], category: "unknown" }),
+    ).toBe(false);
   });
 });
 

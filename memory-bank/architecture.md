@@ -27,7 +27,7 @@ Navegador
 - `frontend/src/main.tsx` es el punto de entrada React y `frontend/src/App.tsx` compone el dashboard.
 - Los componentes de página se organizan en `frontend/src/components/dashboard/`; componentes compartidos de UI están en `frontend/src/components/ui/`.
 - `frontend/src/lib/financial-types.ts` define tipos de movimientos y métricas; `financial-utils.ts` implementa cálculos y formato; `mock-data.ts` contiene datos locales, pero `App.tsx` carga la API y no importa `mock-data.ts`.
-- `App.tsx` hace `fetch` de `/api/metrics`, calcula KPI/agregados y mantiene estados de carga/error. No hay una capa de cliente API separada en la estructura actual.
+- `App.tsx` hace `fetch` de `/api/metrics`, valida los movimientos, cancela la petición al desmontarse, calcula KPI/agregados y mantiene estados de carga/error. No hay una capa de cliente API separada en la estructura actual.
 
 ## Comunicación y contrato
 
@@ -40,4 +40,4 @@ Navegador
 - `backend/tests/test_routes.py` usa `TestClient` para comprobar generador, filtros y endpoints.
 - `frontend/src/lib/financial-utils.test.ts` verifica funciones puras; no se ven pruebas de componentes en la estructura actual.
 - `backend/app/main.py` permite todos los orígenes CORS con credenciales habilitadas. Es una configuración observable del repositorio, no una recomendación para producción.
-- El periodo del encabezado frontend está escrito como `2024 - Full Year` en `frontend/src/App.tsx`, mientras el backend deriva las fechas del calendario actual; no existe sincronización del rango mostrado con la API en el flujo principal.
+- El encabezado frontend deriva el periodo de los meses mínimo y máximo presentes en los movimientos recibidos (`frontend/src/lib/financial-utils.ts`); el backend deriva las fechas del calendario actual.

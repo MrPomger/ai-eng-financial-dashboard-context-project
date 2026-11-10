@@ -4,10 +4,6 @@ import {
   type MonthlyDataPoint,
 } from "./financial-types";
 
-function toYearMonthKey(value: Date): string {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
-}
-
 function formatMonthYearLabel(yearMonthKey: string): string {
   const [yearText, monthText] = yearMonthKey.split("-");
   const year = Number(yearText);
@@ -19,13 +15,16 @@ function formatMonthYearLabel(yearMonthKey: string): string {
 }
 
 export function computeKPIs(movements: FinancialMovement[]): KPIMetrics {
-  const totalIncome = movements
-    .filter((m) => m.operation_type === "income")
-    .reduce((sum, m) => sum + m.amount, 0);
+  let totalIncome = 0;
+  let totalOutcome = 0;
 
-  const totalOutcome = movements
-    .filter((m) => m.operation_type === "outcome")
-    .reduce((sum, m) => sum + m.amount, 0);
+  for (const movement of movements) {
+    if (movement.operation_type === "income") {
+      totalIncome += movement.amount;
+    } else {
+      totalOutcome += movement.amount;
+    }
+  }
 
   const profit = totalIncome - totalOutcome;
   const profitPercent = totalIncome > 0 ? (profit / totalIncome) * 100 : 0;
@@ -39,7 +38,9 @@ export function computeMonthlyData(
   const monthlyMap: Record<string, { income: number; outcome: number }> = {};
 
   for (const m of movements) {
-    const yearMonthKey = toYearMonthKey(new Date(m.create_date));
+    // These are ISO calendar dates, not timestamps. Avoid timezone shifts
+    // that could place a transaction in the previous month.
+    const yearMonthKey = m.create_date.slice(0, 7);
     if (!monthlyMap[yearMonthKey]) {
       monthlyMap[yearMonthKey] = { income: 0, outcome: 0 };
     }
@@ -64,6 +65,24 @@ export function computeMonthlyData(
         profitPercent,
       };
     });
+}
+
+export function formatMovementPeriod(movements: FinancialMovement[]): string {
+  if (movements.length === 0) return "No data";
+
+  let firstMonthKey = movements[0].create_date.slice(0, 7);
+  let lastMonthKey = firstMonthKey;
+
+  for (const { create_date } of movements) {
+    const monthKey = create_date.slice(0, 7);
+    if (monthKey < firstMonthKey) firstMonthKey = monthKey;
+    if (monthKey > lastMonthKey) lastMonthKey = monthKey;
+  }
+
+  const firstMonth = formatMonthYearLabel(firstMonthKey);
+  const lastMonth = formatMonthYearLabel(lastMonthKey);
+
+  return firstMonth === lastMonth ? firstMonth : `${firstMonth} – ${lastMonth}`;
 }
 
 export function formatCurrency(value: number): string {
