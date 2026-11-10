@@ -37,7 +37,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       <p className="font-semibold text-foreground mb-2">{label}</p>
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2 py-0.5">
-          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="text-muted-foreground capitalize">{entry.name}:</span>
           <span className="font-medium text-foreground ml-auto pl-4">{formatCurrency(entry.value)}</span>
         </div>
@@ -76,7 +76,11 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <LineChart
+              accessibilityLayer
+              data={data}
+              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.6} />
               <XAxis
                 dataKey="month"
